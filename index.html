@@ -124,20 +124,39 @@
 		</div>
 
 		<script>
-			const heartsContainer = document.getElementById('hearts-container');
+  const heartsContainer = document.getElementById('hearts-container');
 
-			function createHeart() {
-				const heart = document.createElement('div');
-				heart.classList.add('heart');
-				heart.style.left = Math.random() * 100 + 'vw';
-				heart.style.animationDuration = 4 + Math.random() * 4 + 's';
-				heartsContainer.appendChild(heart);
-				setTimeout(() => {
-					heart.remove();
-				}, 8000);
-			}
+  // Funkcja tworząca serduszka
+  function createHeart() {
+    const heart = document.createElement('div');
+    heart.classList.add('heart');
+    heart.style.left = Math.random() * 100 + 'vw';
+    heart.style.animationDuration = 4 + Math.random() * 4 + 's';
+    heartsContainer.appendChild(heart);
+    setTimeout(() => {
+      heart.remove();
+    }, 8000);
+  }
 
-			setInterval(createHeart, 300);
-		</script>
+  // Ustal liczbę serduszek wg szerokości ekranu
+  const screenWidth = window.innerWidth;
+  let maxHearts;
+
+  if(screenWidth < 600) {
+    maxHearts = 8; // mniej serduszek na telefonie
+  } else if(screenWidth < 1024) {
+    maxHearts = 15; // tablet
+  } else {
+    maxHearts = 25; // desktop
+  }
+
+  // Tworzymy serduszka w zadanym tempie
+  const interval = setInterval(() => {
+    if(heartsContainer.childElementCount < maxHearts) {
+      createHeart();
+    }
+  }, 300);
+</script>
 	</body>
 </html>
+
