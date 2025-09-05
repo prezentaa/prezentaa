@@ -1,163 +1,116 @@
 <!DOCTYPE html>
 <html lang="pl">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Prezent dla Pary Młodej</title>
-		<style>
-			body {
-				margin: 0;
-				padding: 0;
-				font-family: 'Segoe UI', sans-serif;
-				background-color: #fff;
-				color: #333;
-				overflow-x: hidden;
-			}
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prezent dla Pary Młodej</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .hearts { position: fixed; inset: 0; pointer-events: none; width: 100%; height: 100%; overflow: hidden; z-index: 0; }
+      .heart { position: absolute; width: 20px; height: 20px; background-color: #ef4444; transform: rotate(45deg); animation: fall 8s linear infinite; opacity: 0.7; }
+      .heart::before, .heart::after { content: ""; position: absolute; width: 20px; height: 20px; background-color: #ef4444; border-radius: 9999px; }
+      .heart::before { top: -10px; left: 0; }
+      .heart::after { left: -10px; top: 0; }
+      @keyframes fall { 0% { transform: translateY(-10%) rotate(45deg); opacity: 1; } 100% { transform: translateY(110vh) rotate(45deg); opacity: 0; } }
+    </style>
+  </head>
+  <body class="bg-white text-gray-800 antialiased overflow-x-hidden">
+    <div class="hearts" id="hearts-container"></div>
 
-			.container {
-				text-align: center;
-				padding: 60px 20px;
-			}
+    <main class="relative z-10 min-h-screen flex items-center justify-center py-16 px-4">
+      <div class="w-full max-w-3xl text-center space-y-8">
+        <header class="space-y-3">
+          <h1 class="text-3xl md:text-4xl font-semibold tracking-tight">Dla Kochanej Pary Młodej 💍</h1>
+          <p class="text-lg md:text-xl text-gray-600">Wasz pierwszy taniec – niech ta melodia przypomina Wam najpiękniejszy dzień ❤️</p>
+        </header>
 
-			h1 {
-				font-size: 2.2rem;
-				margin-bottom: 10px;
-			}
+        <!-- Spotify embed -->
+        <section class="mx-auto w-full">
+          <div class="mx-auto w-full max-w-2xl rounded-2xl shadow-lg overflow-hidden">
+            <iframe
+              data-testid="embed-iframe"
+              class="w-full h-[352px] border-0"
+              style="border-radius: 0"
+              src="https://open.spotify.com/embed/track/15JOpNxF5pZOW8VycDxS86?utm_source=generator&theme=0"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+            ></iframe>
+          </div>
+        </section>
 
-			p {
-				font-size: 1.2rem;
-				margin-bottom: 30px;
-			}
+        <!-- Sekcja weryfikacji PIN (kod z ekranu po banknotach na VPS) -->
+        <section class="mx-auto w-full max-w-xl">
+          <div class="rounded-2xl border border-gray-200 p-4 sm:p-5 shadow-sm bg-white">
+            <h2 class="text-lg font-semibold">Odblokowanie finału</h2>
+            <p class="text-sm text-gray-600 mt-1">Wpisz <span class="font-medium">6‑znakowy kod</span> wyświetlony po rozwiązaniu zagadki z banknotami.</p>
+            <div class="mt-3 flex items-center justify-center gap-2">
+              <input id="pinInput" maxlength="6" inputmode="latin-prose" autocapitalize="characters" spellcheck="false"
+                     class="w-40 h-11 text-center uppercase tracking-widest border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
+                     placeholder="np. A7C9ZQ" />
+              <button id="pinCheckBtn" type="button"
+                      class="px-4 h-11 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-300">
+                Sprawdź kod
+              </button>
+            </div>
+            <p id="pinMsg" class="mt-2 text-sm h-5 text-rose-600"></p>
+          </div>
+        </section>
+      </div>
+    </main>
 
-			.spotify {
-				display: flex;
-				justify-content: center;
-				margin-bottom: 60px;
-			}
+    <script>
+      // --- Serduszka ---
+      const heartsContainer = document.getElementById('hearts-container');
+      function createHeart(){
+        const heart = document.createElement('div');
+        heart.classList.add('heart');
+        heart.style.left = Math.random()*100 + 'vw';
+        heart.style.animationDuration = 4 + Math.random()*4 + 's';
+        heartsContainer.appendChild(heart);
+        setTimeout(()=>heart.remove(), 8000);
+      }
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const screenWidth = window.innerWidth;
+      let maxHearts, intervalTime;
+      if (prefersReducedMotion){ maxHearts=0; intervalTime=1000; }
+      else if (screenWidth < 640){ maxHearts=5; intervalTime=800; }
+      else if (screenWidth < 1024){ maxHearts=15; intervalTime=400; }
+      else { maxHearts=25; intervalTime=300; }
+      if (maxHearts>0){ setInterval(()=>{ if (heartsContainer.childElementCount < maxHearts) createHeart(); }, intervalTime); }
 
-			iframe {
-				border-radius: 12px;
-				border: none;
-			}
+      // --- Weryfikacja PIN z VPS (CORS) ---
+      const pinInput = document.getElementById('pinInput');
+      const pinBtn   = document.getElementById('pinCheckBtn');
+      const pinMsg   = document.getElementById('pinMsg');
 
-			.hearts {
-				position: fixed;
-				top: 0;
-				left: 0;
-				pointer-events: none;
-				width: 100%;
-				height: 100%;
-				overflow: hidden;
-				z-index: 0;
-			}
+      function sanitizePin(v){ return (v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6); }
 
-			.heart {
-				position: absolute;
-				width: 20px;
-				height: 20px;
-				background-color: red;
-				transform: rotate(45deg);
-				animation: fall 8s linear infinite;
-				opacity: 0.7;
-			}
+      pinInput?.addEventListener('input', ()=>{ pinInput.value = sanitizePin(pinInput.value); pinMsg.textContent=''; });
+      pinInput?.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); pinBtn?.click(); }});
 
-			.heart::before,
-			.heart::after {
-				content: '';
-				position: absolute;
-				width: 20px;
-				height: 20px;
-				background-color: red;
-				border-radius: 50%;
-			}
-
-			.heart::before {
-				top: -10px;
-				left: 0;
-			}
-
-			.heart::after {
-				left: -10px;
-				top: 0;
-			}
-
-			@keyframes fall {
-				0% {
-					transform: translateY(-10%) rotate(45deg);
-					opacity: 1;
-				}
-				100% {
-					transform: translateY(110vh) rotate(45deg);
-					opacity: 0;
-				}
-			}
-
-			.player-container {
-				display: flex;
-				justify-content: center;
-				margin: 20px 0;
-			}
-		</style>
-	</head>
-	<body>
-		<div class="hearts" id="hearts-container"></div>
-
-		<div class="container">
-			<h1>Dla Kochanej Pary Młodej 💍</h1>
-			<p>
-				Wasz pierwszy taniec – niech ta melodia przypomina Wam najpiękniejszy
-				dzień ❤️
-			</p>
-			<div class="player-container">
-				<iframe
-					data-testid="embed-iframe"
-					style="border-radius: 12px"
-					src="https://open.spotify.com/embed/track/15JOpNxF5pZOW8VycDxS86?utm_source=generator&theme=0"
-					width="100%"
-					height="352"
-					frameborder="0"
-					allowfullscreen=""
-					allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-					loading="lazy"
-				></iframe>
-			</div>
-		</div>
-
-		<script>
- const heartsContainer = document.getElementById('hearts-container');
-
-function createHeart() {
-  const heart = document.createElement('div');
-  heart.classList.add('heart');
-  heart.style.left = Math.random() * 100 + 'vw';
-  heart.style.animationDuration = 4 + Math.random() * 4 + 's';
-  heartsContainer.appendChild(heart);
-  setTimeout(() => {
-    heart.remove();
-  }, 8000);
-}
-
-const screenWidth = window.innerWidth;
-let maxHearts, intervalTime;
-
-if(screenWidth < 600) {
-  maxHearts = 5;     // max 5 serduszek na telefonach
-  intervalTime = 800; // tworzymy serduszka rzadziej (co 800 ms)
-} else if(screenWidth < 1024) {
-  maxHearts = 15;
-  intervalTime = 400;
-} else {
-  maxHearts = 25;
-  intervalTime = 300;
-}
-
-setInterval(() => {
-  if(heartsContainer.childElementCount < maxHearts) {
-    createHeart();
-  }
-}, intervalTime);
-</script>
-	</body>
+      pinBtn?.addEventListener('click', async ()=>{
+        const code = sanitizePin(pinInput.value);
+        if (code.length !== 6){ pinMsg.textContent='Wpisz pełny 6‑znakowy kod.'; return; }
+        pinBtn.disabled = true; const oldLabel = pinBtn.textContent; pinBtn.textContent = 'Sprawdzam…'; pinMsg.textContent = '';
+        try{
+          // Uwaga: GitHub Pages jest HTTPS → VPS też MUSI być HTTPS
+          const res = await fetch('https://vps-4f245515.vps.ovh.net/api/verify-pin.php', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+          });
+          const data = await res.json();
+          if (res.ok && data && data.ok && data.redirectUrl){
+            // natychmiastowe przejście do strony finałowej na VPS
+            window.location.href = data.redirectUrl;
+            return;
+          }
+          pinMsg.textContent = 'Niepoprawny lub wygasły kod. Spróbujcie ponownie.';
+        } catch(e){
+          pinMsg.textContent = 'Błąd połączenia. Spróbujcie ponownie.';
+        } finally {
+          pinBtn.disabled = false; pinBtn.textContent = oldLabel;
+        }
+      });
+    </script>
+  </body>
 </html>
-
-
