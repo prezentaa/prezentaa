@@ -24,18 +24,37 @@
           <p class="text-lg md:text-xl text-gray-600">Wasz pierwszy taniec – niech ta melodia przypomina Wam najpiękniejszy dzień ❤️</p>
         </header>
 
-        <!-- Spotify embed -->
+        <!-- YouTube embed -->
         <section class="mx-auto w-full">
-          <div class="mx-auto w-full max-w-2xl rounded-2xl shadow-lg overflow-hidden">
-            <iframe data-testid="embed-iframe" style="border-radius:12px" src="https://open.spotify.com/embed/track/6VMnvGhdOpO5NDFIZP7Ff4?utm_source=generator" width="100%" height="352" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+          <div class="relative mx-auto w-full max-w-2xl rounded-2xl shadow-lg overflow-hidden">
+            <!-- Przyciski/overlay -->
+            <button id="unmuteBtn"
+              class="hidden absolute bottom-3 right-3 z-20 rounded-xl bg-indigo-600/90 text-white text-sm font-medium px-4 py-2 hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-300">
+              Włącz dźwięk 🔊
+            </button>
+
+            <div class="aspect-video bg-black">
+              <iframe
+                id="ytplayer"
+                class="w-full h-full"
+                src="https://www.youtube.com/embed/JIy2eeIZEjI?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=https://example.com"
+                title="Pierwszy taniec"
+                frameborder="0"
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                referrerpolicy="strict-origin-when-cross-origin"
+                allowfullscreen
+                loading="eager">
+              </iframe>
+            </div>
           </div>
+          <p class="text-sm text-gray-500 mt-2">Uwaga: przeglądarki pozwalają na autoplay tylko z wyciszonym dźwiękiem. Kliknij „Włącz dźwięk”, aby odtworzyć z audio.</p>
         </section>
 
         <!-- Sekcja weryfikacji PIN (kod z ekranu po banknotach na VPS) -->
         <section class="mx-auto w-full max-w-xl">
           <div class="rounded-2xl border border-gray-200 p-4 sm:p-5 shadow-sm bg-white">
             <h2 class="text-lg font-semibold">Odblokowanie finału</h2>
-            <p class="text-sm text-gray-600 mt-1">Wpisz <span class="font-medium">6‑znakowy kod</span> wyświetlony po rozwiązaniu zagadki z kodami.</p>
+            <p class="text-sm text-gray-600 mt-1">Wpisz <span class="font-medium">6-znakowy kod</span> wyświetlony po rozwiązaniu zagadki z kodami.</p>
             <div class="mt-3 flex items-center justify-center gap-2">
               <input id="pinInput" maxlength="6" inputmode="latin-prose" autocapitalize="characters" spellcheck="false"
                      class="w-40 h-11 text-center uppercase tracking-widest border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
@@ -51,8 +70,8 @@
       </div>
     </main>
 
+    <!-- Hearts -->
     <script>
-      // --- Serduszka ---
       const heartsContainer = document.getElementById('hearts-container');
       function createHeart(){
         const heart = document.createElement('div');
@@ -70,8 +89,62 @@
       else if (screenWidth < 1024){ maxHearts=15; intervalTime=400; }
       else { maxHearts=25; intervalTime=300; }
       if (maxHearts>0){ setInterval(()=>{ if (heartsContainer.childElementCount < maxHearts) createHeart(); }, intervalTime); }
+    </script>
 
-      // --- Weryfikacja PIN z VPS (CORS) ---
+    <!-- YT IFrame API (do wyciszenia/odciszenia bez przeładowania) -->
+    <script>
+      // Załaduj API
+      const tag = document.createElement('script');
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(tag);
+
+      let player;
+      const unmuteBtn = document.getElementById('unmuteBtn');
+      const ytFrame = document.getElementById('ytplayer');
+
+      // Ustaw poprawny origin w SRC (ważne dla enablejsapi)
+      try {
+        const url = new URL(ytFrame.src);
+        url.searchParams.set('origin', window.location.origin);
+        ytFrame.src = url.toString();
+      } catch(e){ /* ignore */ }
+
+      window.onYouTubeIframeAPIReady = function() {
+        player = new YT.Player('ytplayer', {
+          events: {
+            'onReady': (e) => {
+              try {
+                e.target.mute();
+                e.target.playVideo();
+                // pokaż przycisk odciszenia po starcie
+                unmuteBtn.classList.remove('hidden');
+              } catch(err) { /* ignore */ }
+            },
+            'onStateChange': (e) => {
+              // jeśli autoplay został zablokowany, pokaż przycisk i podpowiedź
+              if (e.data === YT.PlayerState.UNSTARTED) {
+                unmuteBtn.classList.remove('hidden');
+              }
+            }
+          }
+        });
+      };
+
+      // Odciszenie po kliknięciu
+      unmuteBtn.addEventListener('click', () => {
+        try {
+          if (player) {
+            player.unMute();
+            // jeśli było wstrzymane — zagraj
+            player.playVideo();
+            unmuteBtn.classList.add('hidden');
+          }
+        } catch(e){ /* ignore */ }
+      });
+    </script>
+
+    <!-- Weryfikacja PIN z VPS (CORS) -->
+    <script>
       const pinInput = document.getElementById('pinInput');
       const pinBtn   = document.getElementById('pinCheckBtn');
       const pinMsg   = document.getElementById('pinMsg');
@@ -83,17 +156,16 @@
 
       pinBtn?.addEventListener('click', async ()=>{
         const code = sanitizePin(pinInput.value);
-        if (code.length !== 6){ pinMsg.textContent='Wpisz pełny 6‑znakowy kod.'; return; }
+        if (code.length !== 6){ pinMsg.textContent='Wpisz pełny 6-znakowy kod.'; return; }
         pinBtn.disabled = true; const oldLabel = pinBtn.textContent; pinBtn.textContent = 'Sprawdzam…'; pinMsg.textContent = '';
         try{
-          // Uwaga: GitHub Pages jest HTTPS → VPS też MUSI być HTTPS
+          // GitHub Pages jest HTTPS → VPS też MUSI być HTTPS
           const res = await fetch('https://vps-4f245515.vps.ovh.net/api/verify-pin.php', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ code })
           });
           const data = await res.json();
           if (res.ok && data && data.ok && data.redirectUrl){
-            // natychmiastowe przejście do strony finałowej na VPS
             window.location.href = data.redirectUrl;
             return;
           }
@@ -107,5 +179,3 @@
     </script>
   </body>
 </html>
-
-
